@@ -1,0 +1,5 @@
+matplotlib==3.*
+scikit-learn==1.5.*
+tensorflow==2.16.*
+ipykernel
+notebook

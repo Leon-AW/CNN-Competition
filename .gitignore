@@ -1,0 +1,6 @@
+.vscode/
+.env
+venv/
+classifier.keras
+confusion_matrix.png
+predictions.csv
