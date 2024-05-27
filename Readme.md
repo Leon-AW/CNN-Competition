@@ -42,7 +42,7 @@ For example:
 
 ```sh
 env_name/bin/pip install -r requirements.txt
-env_name/bin/python mnist.py
+env_name/bin/python train.py
 ```
 
 ### Native Windows
@@ -202,7 +202,7 @@ env_name/bin/python -m ipykernel install --user --name=env_name
 
 ## Run the CNN Example training script
 
-To run the MNIST example `mnist.py` model training, make sure you set up and activated
+To run the CNN example `train.py` model training, make sure you set up and activated
 your virtual environment. Then you can run
 
 ```sh
