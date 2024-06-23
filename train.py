@@ -1,5 +1,5 @@
 import csv
-
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
@@ -8,74 +8,57 @@ from sklearn.metrics import (
 )
 from tensorflow import keras
 
-
 def make_classifier():
-    # Define the classifier model
     input_shape = (32, 32, 3)
     classifier = keras.models.Sequential()
 
     classifier.add(keras.layers.InputLayer(input_shape=input_shape))
 
-    # Conv-ReLU-Pool Block 1
-    classifier.add(
-        keras.layers.Convolution2D(32, (3, 3), padding="same", name="Conv2D_1")
-    )
+    # Data Augmentation
+    classifier.add(keras.layers.RandomFlip("horizontal"))
+    classifier.add(keras.layers.RandomRotation(0.1))
+    classifier.add(keras.layers.RandomZoom(0.1))
+    
+
+    # Conv-BatchNorm-ReLU-Pool Block 1
+    classifier.add(keras.layers.Convolution2D(32, (3, 3), padding="same", name="Conv2D_1"))
+    classifier.add(keras.layers.BatchNormalization())
     classifier.add(keras.layers.ReLU(name="activation_1"))
     classifier.add(keras.layers.MaxPool2D(pool_size=(2, 2), name="pooling_1"))
 
-    # Conv-ReLU-Pool Block 2
-    classifier.add(
-        keras.layers.Convolution2D(64, (3, 3), padding="same", name="Conv2D_2")
-    )
+    # Conv-BatchNorm-ReLU-Pool Block 2
+    classifier.add(keras.layers.Convolution2D(64, (3, 3), padding="same", name="Conv2D_2"))
+    classifier.add(keras.layers.BatchNormalization())
     classifier.add(keras.layers.ReLU(name="activation_2"))
     classifier.add(keras.layers.MaxPool2D(pool_size=(2, 2), name="pooling_2"))
 
-    # Conv-ReLU-Pool Block 3
-    classifier.add(
-        keras.layers.Convolution2D(128, (3, 3), padding="same", name="Conv2D_3")
-    )
+    # Conv-BatchNorm-ReLU-Pool Block 3
+    classifier.add(keras.layers.Convolution2D(128, (3, 3), padding="same", name="Conv2D_3"))
+    classifier.add(keras.layers.BatchNormalization())
     classifier.add(keras.layers.ReLU(name="activation_3"))
     classifier.add(keras.layers.MaxPool2D(pool_size=(2, 2), name="pooling_3"))
 
-    # Conv-ReLU-Pool Block 4
-    classifier.add(
-        keras.layers.Convolution2D(256, (3, 3), padding="same", name="Conv2D_4")
-    )
-    classifier.add(keras.layers.ReLU(name="activation_4"))
-    classifier.add(keras.layers.MaxPool2D(pool_size=(2, 2), name="pooling_4"))
-
-    # Flatten and Dense Layer
+    # Flatten and Dense Layers
     classifier.add(keras.layers.Flatten(name="flatten_1"))
-    classifier.add(keras.layers.Dense(1024, activation="relu"))
-    classifier.add(
-        keras.layers.Dense(num_classes, activation="softmax"),
-    )
+    classifier.add(keras.layers.Dense(512, activation="relu"))
+    classifier.add(keras.layers.BatchNormalization())
+    classifier.add(keras.layers.Dropout(0.5))
+    classifier.add(keras.layers.Dense(num_classes, activation="softmax"))
 
-    # Compile the model, here we set an optimizer, loss function and evaluation metric
+    # Compile the model
+    optimizer = keras.optimizers.Adam(learning_rate=0.001)
     classifier.compile(
-        optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+        optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"]
     )
 
     return classifier
-
 
 def make_test_predictions(classifier, test_ds):
     # Make predictions on the test set
     y_test_pred = classifier.predict(test_ds)
     y_test_pred = y_test_pred.argmax(axis=1)
 
-    # the image data loader reads files as
-    # './data/test/0.png',
-    #  './data/test/1.png',
-    #  './data/test/10.png',
-    #  './data/test/100.png',
-    #  './data/test/1000.png',
-    #  './data/test/1001.png',
-    #  './data/test/1002.png',
-    # so we need to sort them to get the correct order for the predictions
-
-    # sort the predictions by image id in ascending order,
-    # 0.png, 1.png, 2.png, ...
+    # Sort the predictions by image id in ascending order
     y_test_pred = y_test_pred[
         sorted(
             range(len(y_test_pred)),
@@ -85,7 +68,6 @@ def make_test_predictions(classifier, test_ds):
 
     return y_test_pred
 
-
 def save_predictions(y_test_pred):
     # Save the predictions as csv, with id,class headers
     with open("predictions.csv", "w") as f:
@@ -93,6 +75,15 @@ def save_predictions(y_test_pred):
         writer.writerow(["id", "class"])
         for i, pred in enumerate(y_test_pred):
             writer.writerow([i, pred])
+
+# Learning Rate Schedule
+def lr_schedule(epoch):
+    lr = 0.001
+    if epoch > 75:
+        lr *= 0.1
+    elif epoch > 100:
+        lr *= 0.01
+    return lr
 
 
 if __name__ == "__main__":
@@ -102,7 +93,7 @@ if __name__ == "__main__":
         labels="inferred",
         label_mode="categorical",
         color_mode="rgb",
-        batch_size=1024,
+        batch_size=32,  # Reduced batch size
         image_size=(32, 32),
         interpolation="bilinear",
         data_format="channels_last",
@@ -118,7 +109,7 @@ if __name__ == "__main__":
         "./data/test",
         labels=None,
         color_mode="rgb",
-        batch_size=1500,
+        batch_size=32,  # Reduced batch size
         image_size=(32, 32),
         interpolation="bilinear",
         data_format="channels_last",
@@ -132,8 +123,19 @@ if __name__ == "__main__":
 
     classifier = make_classifier()
 
+    # Callbacks
+    lr_scheduler = keras.callbacks.LearningRateScheduler(lr_schedule)
+    early_stopping = keras.callbacks.EarlyStopping(
+        monitor='val_accuracy', patience=10, restore_best_weights=True
+    )
+
     # Train the model
-    history = classifier.fit(train_ds, epochs=10, validation_data=val_ds)
+    history = classifier.fit(
+        train_ds,
+        epochs=100,  # Increased number of epochs
+        validation_data=val_ds,
+        callbacks=[lr_scheduler, early_stopping]
+    )
 
     # Save the model
     classifier.save("classifier.keras")
@@ -144,14 +146,17 @@ if __name__ == "__main__":
     # Save the predictions
     save_predictions(y_test_pred)
 
-    # Evaluate the model
-    # first, get the true labels and the predicted labels
-    _, y_true = val_ds.as_numpy_iterator().next()
-    y_val_pred = classifier.predict(val_ds)
+    # Evaluate the model on the entire validation dataset
+    y_true = []
+    y_val_pred = []
 
-    # convert the one-hot encoded labels back to integer ids
-    y_true = y_true.argmax(axis=1)
-    y_val_pred = y_val_pred.argmax(axis=1)
+    for x, y in val_ds:
+        y_true.extend(y.numpy().argmax(axis=1))
+        y_val_pred.extend(classifier.predict(x).argmax(axis=1))
+
+    # Convert lists to numpy arrays
+    y_true = np.array(y_true)
+    y_val_pred = np.array(y_val_pred)
 
     # print the classification report
     print(classification_report(y_true, y_val_pred, target_names=class_names))
