@@ -1,5 +1,9 @@
 # Kognitive Robotik CNN Kaggle competition
 
+Achieved second place and a Kaggle Result:
+Private Score: 0.927982
+Public Score: 0.937526
+
 ## Description
 
 Join the Kaggle competition using this link:
