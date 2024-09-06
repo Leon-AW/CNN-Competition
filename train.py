@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
     # Callbacks
     early_stopping = keras.callbacks.EarlyStopping(
-        monitor='val_accuracy', patience=20, restore_best_weights=True
+        monitor='val_accuracy', patience=30, restore_best_weights=True
     )
 
     # Train the model
