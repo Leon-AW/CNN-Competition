@@ -1,0 +1,9 @@
+,precision,recall,f1-score,support
+ball,0.98,0.99,0.99,146
+field_line,0.99,0.99,0.99,161
+penalty_mark,1.0,0.99,1.0,148
+rest,0.98,0.97,0.97,169
+robot_foot,0.98,0.99,0.99,176
+accuracy,,0.99,0.99,800
+macro avg,0.99,0.99,0.99,800
+weighted avg,0.99,0.99,0.99,800
